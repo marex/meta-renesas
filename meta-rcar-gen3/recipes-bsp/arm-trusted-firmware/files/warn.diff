@@ -1,0 +1,18 @@
+diff --git a/Makefile b/Makefile
+index df12fa3..67947d2 100644
+--- a/Makefile
++++ b/Makefile
+@@ -215,11 +215,11 @@ ASFLAGS_aarch32		=	-march=armv8-a
+ TF_CFLAGS_aarch32	=	-march=armv8-a
+ 
+ ASFLAGS			+= 	-nostdinc -ffreestanding -Wa,--fatal-warnings	\
+-				-Werror -Wmissing-include-dirs			\
++				-Wmissing-include-dirs			\
+ 				-D__ASSEMBLY__ $(ASFLAGS_$(ARCH))		\
+ 				${DEFINES} ${INCLUDES}
+ TF_CFLAGS		+= 	-nostdinc -ffreestanding -Wall			\
+-				-Werror -Wmissing-include-dirs			\
++				-Wmissing-include-dirs			\
+ 				-std=c99 -c -Os					\
+ 				$(TF_CFLAGS_$(ARCH))				\
+ 				${DEFINES} ${INCLUDES}
