@@ -1,0 +1,41 @@
+From e531a85baf5e08048794e743caa3fc958f846f83 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Thu, 14 Jun 2018 06:29:40 +0200
+Subject: [PATCH] plat: renesas: rcar: Disable RPC HF access security
+
+This disables the RPC HF security and allows ie. U-Boot to
+reprogram HyperFlash or QSPI NOR attached to the RPC HF.
+This is a convenience feature, use at your own risk.
+
+Signed-off-by: Marek Vasut <marek.vasut+renesas@gmail.com>
+---
+ plat/renesas/rcar/bl2_secure_setting.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/plat/renesas/rcar/bl2_secure_setting.c b/plat/renesas/rcar/bl2_secure_setting.c
+index 24697806..991af825 100644
+--- a/plat/renesas/rcar/bl2_secure_setting.c
++++ b/plat/renesas/rcar/bl2_secure_setting.c
+@@ -91,7 +91,7 @@ static const struct {
+ 	/** Security attribute setting for slave ports 13 */
+ 	/* Bit22: RPC slave ports. */
+ 	/*        0: registers can be accessed from secure resource only. */
+-	{SEC_SEL13,		0xFFBFFFFFU},
++	/*{SEC_SEL13,		0xFFBFFFFFU},*/
+ 
+ 	/** Security attribute setting for slave ports 14 */
+ 	/* Bit27: System Timer (SCMT) slave ports. */
+@@ -222,8 +222,8 @@ static const struct {
+ 	/** Security group 1 attribute setting for slave ports 13 */
+ 	/* Bit22: RPC slave ports. */
+ 	/*        SecurityGroup3 */
+-	{SEC_GRP0COND13,	0x00400000U},
+-	{SEC_GRP1COND13,	0x00400000U},
++	/*{SEC_GRP0COND13,	0x00400000U},*/
++	/*{SEC_GRP1COND13,	0x00400000U},*/
+ 
+ 	/** Security group 0 attribute setting for slave ports 14 */
+ 	/** Security group 1 attribute setting for slave ports 14 */
+-- 
+2.17.1
+

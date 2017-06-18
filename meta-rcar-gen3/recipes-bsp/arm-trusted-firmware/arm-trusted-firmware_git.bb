@@ -12,7 +12,11 @@ require include/arm-trusted-firmware-control.inc
 S = "${WORKDIR}/git"
 
 BRANCH = "rcar_gen3"
-SRC_URI = "git://github.com/renesas-rcar/arm-trusted-firmware.git;branch=${BRANCH}"
+SRC_URI = " \
+	git://github.com/renesas-rcar/arm-trusted-firmware.git;branch=${BRANCH} \
+	file://warn.diff \
+	file://0001-plat-renesas-rcar-Disable-RPC-HF-access-security.patch \
+"
 SRCREV = "15dba6bb5868bdfad723bb727684b37b48643fec"
 
 PV = "v1.4+renesas+git${SRCPV}"
