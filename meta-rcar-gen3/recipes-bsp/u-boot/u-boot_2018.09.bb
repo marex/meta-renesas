@@ -10,6 +10,8 @@ PE = "1"
 
 SRC_URI = " \
 	git://git.denx.de/u-boot.git \
+	file://0001-ARM-rmobile-Enable-RPC-on-Salvator-X-ULCB-Ebisu.patch \
+	file://0002-ARM-rmobile-Enable-FIT-update-on-Gen3.patch \
 	"
 
 SRCREV = "4cdeda511f8037015b568396e6dcc3d8fb41e8c0"
