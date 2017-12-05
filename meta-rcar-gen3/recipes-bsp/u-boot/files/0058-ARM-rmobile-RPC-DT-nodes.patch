@@ -1,0 +1,52 @@
+From 190af88d07c8f90b0d415e83b569c6a751075b84 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Sat, 29 Jul 2017 21:28:34 +0200
+Subject: [PATCH 58/59] ARM: rmobile: RPC DT nodes
+
+Signed-off-by: Marek Vasut <marek.vasut+renesas@gmail.com>
+---
+ arch/arm/dts/r8a7795.dtsi | 8 ++++++++
+ arch/arm/dts/r8a7796.dtsi | 8 ++++++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/arch/arm/dts/r8a7795.dtsi b/arch/arm/dts/r8a7795.dtsi
+index 405ae9c781..51d51793b1 100644
+--- a/arch/arm/dts/r8a7795.dtsi
++++ b/arch/arm/dts/r8a7795.dtsi
+@@ -1319,6 +1319,14 @@
+ 			dma-channels = <2>;
+ 		};
+ 
++		rpc: rpc@0xee200000 {
++			compatible = "renesas,rpc-r8a7795";
++			reg = <0 0xee200000 0 0x100>, <0 0x08000000 0 0>;
++			clocks = <&cpg CPG_MOD 917>;
++			bank-width = <2>;
++			status = "disabled";
++		};
++
+ 		sdhi0: sd@ee100000 {
+ 			compatible = "renesas,sdhi-r8a7795";
+ 			reg = <0 0xee100000 0 0x2000>;
+diff --git a/arch/arm/dts/r8a7796.dtsi b/arch/arm/dts/r8a7796.dtsi
+index 6a6bfd4e19..d76f9be49e 100644
+--- a/arch/arm/dts/r8a7796.dtsi
++++ b/arch/arm/dts/r8a7796.dtsi
+@@ -1185,6 +1185,14 @@
+ 			status = "disabled";
+ 		};
+ 
++		rpc: rpc@0xee200000 {
++			compatible = "renesas,rpc-r8a7796";
++			reg = <0 0xee200000 0 0x100>, <0 0x08000000 0 0>;
++			clocks = <&cpg CPG_MOD 917>;
++			bank-width = <2>;
++			status = "disabled";
++		};
++
+ 		sdhi0: sd@ee100000 {
+ 			compatible = "renesas,sdhi-r8a7796";
+ 			reg = <0 0xee100000 0 0x2000>;
+-- 
+2.15.1
+

@@ -62,6 +62,9 @@ SRC_URI = " \
 	file://0054-mmc-uniphier-sd-Handle-DMA-completion-flag-differenc.patch \
 	file://0055-mmc-uniphier-sd-Always-check-controller-version.patch \
 	file://0056-ARM-rmobile-Enable-HS200-mode-on-RCar-Gen3.patch \
+	file://0057-mtd-rpc-Add-Renesas-RPC-Hyperflash-driver.patch \
+	file://0058-ARM-rmobile-RPC-DT-nodes.patch \
+	file://0059-ARM-rmobile-Enable-RPC-on-Salvator-X-and-ULCB.patch \
 	"
 
 SRCREV = "f3dd87e0b98999a78e500e8c6d2b063ebadf535a"
