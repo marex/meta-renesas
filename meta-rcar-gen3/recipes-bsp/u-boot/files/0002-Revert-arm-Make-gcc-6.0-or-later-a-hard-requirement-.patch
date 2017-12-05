@@ -1,0 +1,29 @@
+From a12dd0a8ba7074bbb9f55e5e1a5cf573cda2a05f Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Tue, 5 Dec 2017 03:27:39 +0100
+Subject: [PATCH 2/2] Revert "arm: Make gcc 6.0 or later a hard requirement
+ now."
+
+This reverts commit 6b867dabe84bae1e74e88f4af620c26cb793c4c2.
+---
+ arch/arm/config.mk | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/config.mk b/arch/arm/config.mk
+index 02f61fcc3c..1a77779db4 100644
+--- a/arch/arm/config.mk
++++ b/arch/arm/config.mk
+@@ -68,8 +68,8 @@ endif
+ checkgcc6:
+ 	@if test "$(call cc-name)" = "gcc" -a \
+ 			"$(call cc-version)" -lt "0600"; then \
+-		echo '*** Your GCC is older than 6.0 and is not supported'; \
+-		false; \
++		echo -n '*** Your GCC is older than 6.0 and will not be '; \
++		echo 'supported starting in v2018.01.'; \
+ 	fi
+ 
+ 
+-- 
+2.15.0
+

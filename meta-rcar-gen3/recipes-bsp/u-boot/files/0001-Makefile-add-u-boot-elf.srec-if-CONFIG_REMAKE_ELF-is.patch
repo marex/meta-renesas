@@ -1,0 +1,42 @@
+From 5b1bbc3a84ff2ff912cea5a5c4e89c88045e1088 Mon Sep 17 00:00:00 2001
+From: Masaru Nagai <masaru.nagai.vx@renesas.com>
+Date: Fri, 28 Aug 2015 12:12:45 +0900
+Subject: [PATCH 1/2] Makefile: add u-boot-elf.srec if CONFIG_REMAKE_ELF is
+ defined
+
+Signed-off-by: Masaru Nagai <masaru.nagai.vx@renesas.com>
+Signed-off-by: Hiroyuki Yokoyama <hiroyuki.yokoyama.vx@renesas.com>
+Cc: Hiroyuki Yokoyama <hiroyuki.yokoyama.vx@renesas.com>
+Cc: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
+---
+ Makefile | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index e6d309afe4..18dfed658c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -792,7 +792,7 @@ ALL-$(CONFIG_OF_HOSTFILE) += u-boot.dtb
+ ifneq ($(CONFIG_SPL_TARGET),)
+ ALL-$(CONFIG_SPL) += $(CONFIG_SPL_TARGET:"%"=%)
+ endif
+-ALL-$(CONFIG_REMAKE_ELF) += u-boot.elf
++ALL-$(CONFIG_REMAKE_ELF) += u-boot.elf u-boot-elf.srec
+ ALL-$(CONFIG_EFI_APP) += u-boot-app.efi
+ ALL-$(CONFIG_EFI_STUB) += u-boot-payload.efi
+ 
+@@ -922,6 +922,11 @@ OBJCOPYFLAGS_u-boot.srec := -O srec
+ u-boot.hex u-boot.srec: u-boot FORCE
+ 	$(call if_changed,objcopy)
+ 
++OBJCOPYFLAGS_u-boot-elf.srec := $(OBJCOPYFLAGS_u-boot.srec)
++
++u-boot-elf.srec: u-boot.elf FORCE
++	$(call if_changed,objcopy)
++
+ OBJCOPYFLAGS_u-boot-nodtb.bin := -O binary \
+ 		$(if $(CONFIG_X86_16BIT_INIT),-R .start16 -R .resetvec)
+ 
+-- 
+2.15.0
+
