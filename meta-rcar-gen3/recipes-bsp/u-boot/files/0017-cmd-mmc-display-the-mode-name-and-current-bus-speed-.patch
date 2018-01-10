@@ -1,0 +1,32 @@
+From 78d0bb5a4581cf1d7cc3e2f25a739de5100c6ba6 Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 21 Sep 2017 16:29:56 +0200
+Subject: [PATCH 17/56] cmd: mmc: display the mode name and current bus speed
+ in the mmc info
+
+Display the mode name when the user execute 'mmc info'. Also instead of
+displaying tran_speed, display the actual bus speed.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+---
+ cmd/mmc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/cmd/mmc.c b/cmd/mmc.c
+index 5def4ea1a2..6d48ecbe0b 100644
+--- a/cmd/mmc.c
++++ b/cmd/mmc.c
+@@ -23,7 +23,8 @@ static void print_mmcinfo(struct mmc *mmc)
+ 			(mmc->cid[1] >> 24), (mmc->cid[1] >> 16) & 0xff,
+ 			(mmc->cid[1] >> 8) & 0xff, mmc->cid[1] & 0xff);
+ 
+-	printf("Tran Speed: %d\n", mmc->tran_speed);
++	printf("Bus Speed: %d\n", mmc->clock);
++	printf("Mode : %s\n", mmc_mode_name(mmc->selected_mode));
+ 	printf("Rd Block Len: %d\n", mmc->read_bl_len);
+ 
+ 	printf("%s version %d.%d", IS_SD(mmc) ? "SD" : "MMC",
+-- 
+2.15.1
+

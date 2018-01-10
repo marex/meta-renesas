@@ -1,0 +1,82 @@
+From 1a8ae97c9616c6e6c2aad1f558f6f472d1f3a874 Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 21 Sep 2017 16:30:08 +0200
+Subject: [PATCH 29/56] mmc: disable UHS modes if Vcc cannot be switched on and
+ off
+
+If a power cycle cannot be done on Vcc, it is safer not to try the UHS
+modes because we wouldn't be able to recover from an error occurring
+during the UHS initialization.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc.c | 19 ++++++++++++++++---
+ include/mmc.h     |  1 +
+ 2 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index fe31540ba2..dbd95946ea 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1451,7 +1451,7 @@ static int sd_select_mode_and_width(struct mmc *mmc)
+ 	if (err)
+ 		return err;
+ 	/* Restrict card's capabilities by what the host can do */
+-	caps = mmc->card_caps & (mmc->cfg->host_caps | MMC_MODE_1BIT);
++	caps = mmc->card_caps & (mmc->host_caps | MMC_MODE_1BIT);
+ 
+ 	if (!uhs_en)
+ 		caps &= ~UHS_CAPS;
+@@ -1599,7 +1599,7 @@ static int mmc_select_mode_and_width(struct mmc *mmc)
+ 		return err;
+ 
+ 	/* Restrict card's capabilities by what the host can do */
+-	mmc->card_caps &= (mmc->cfg->host_caps | MMC_MODE_1BIT);
++	mmc->card_caps &= (mmc->host_caps | MMC_MODE_1BIT);
+ 
+ 	/* Only version 4 of MMC supports wider bus widths */
+ 	if (mmc->version < MMC_VERSION_4)
+@@ -2182,6 +2182,8 @@ int mmc_start_init(struct mmc *mmc)
+ 	bool uhs_en = supports_uhs(mmc->cfg->host_caps);
+ 	int err;
+ 
++	mmc->host_caps = mmc->cfg->host_caps;
++
+ 	/* we pretend there's no card when init is NULL */
+ 	no_card = mmc_getcd(mmc) == 0;
+ #if !CONFIG_IS_ENABLED(DM_MMC)
+@@ -2205,7 +2207,18 @@ int mmc_start_init(struct mmc *mmc)
+ 	if (err)
+ 		return err;
+ 
+-	err = mmc_power_on(mmc);
++	err = mmc_power_cycle(mmc);
++	if (err) {
++		/*
++		 * if power cycling is not supported, we should not try
++		 * to use the UHS modes, because we wouldn't be able to
++		 * recover from an error during the UHS initialization.
++		 */
++		debug("Unable to do a full power cycle. Disabling the UHS modes for safety\n");
++		uhs_en = false;
++		mmc->host_caps &= ~UHS_CAPS;
++		err = mmc_power_on(mmc);
++	}
+ 	if (err)
+ 		return err;
+ 
+diff --git a/include/mmc.h b/include/mmc.h
+index ba4a13e861..59ea363ea2 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -544,6 +544,7 @@ struct mmc {
+ 	uint clock;
+ 	enum mmc_voltage signal_voltage;
+ 	uint card_caps;
++	uint host_caps;
+ 	uint ocr;
+ 	uint dsr;
+ 	uint dsr_imp;
+-- 
+2.15.1
+

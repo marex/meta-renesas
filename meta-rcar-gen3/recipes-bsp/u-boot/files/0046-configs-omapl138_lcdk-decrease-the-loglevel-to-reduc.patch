@@ -1,0 +1,31 @@
+From 419cd62b94385e2ae47c60da59fd7596f405d326 Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 30 Nov 2017 17:44:04 +0100
+Subject: [PATCH 46/56] configs: omapl138_lcdk: decrease the loglevel to reduce
+ the size of the SPL
+
+The changes in the MMC stack have increased its footprint up to the point
+were its breaks the generation of the SPL for this platform.
+Fix this by reducing the loglevel.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Reviewed-by: Peter Howard <phoward@gme.net.au>
+---
+ configs/omapl138_lcdk_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/configs/omapl138_lcdk_defconfig b/configs/omapl138_lcdk_defconfig
+index 8d6b12f5b7..0d4506ec44 100644
+--- a/configs/omapl138_lcdk_defconfig
++++ b/configs/omapl138_lcdk_defconfig
+@@ -8,6 +8,7 @@ CONFIG_SPL_MMC_SUPPORT=y
+ CONFIG_SPL_SERIAL_SUPPORT=y
+ CONFIG_SPL_NAND_SUPPORT=y
+ CONFIG_BOOTDELAY=3
++CONFIG_LOGLEVEL=3
+ CONFIG_VERSION_VARIABLE=y
+ # CONFIG_DISPLAY_CPUINFO is not set
+ # CONFIG_DISPLAY_BOARDINFO is not set
+-- 
+2.15.1
+

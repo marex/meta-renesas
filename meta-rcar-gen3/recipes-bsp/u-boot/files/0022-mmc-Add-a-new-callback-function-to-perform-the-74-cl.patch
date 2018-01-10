@@ -1,0 +1,103 @@
+From 73b8b8ca797899c975a9e9c174cc6fed56d2fea4 Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 21 Sep 2017 16:30:01 +0200
+Subject: [PATCH 22/56] mmc: Add a new callback function to perform the 74
+ clocks cycle sequence
+
+Add a new callback function *send_init_stream* which start a sequence of
+at least 74 clock cycles.
+The mmc core uses *mmc_send_init_stream* in order to invoke the callback
+function. This will be used during power cycle where the specification
+requires such a sequence after power up.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc-uclass.c | 13 +++++++++++++
+ drivers/mmc/mmc.c        |  6 ++++++
+ include/mmc.h            | 10 ++++++++++
+ 3 files changed, 29 insertions(+)
+
+diff --git a/drivers/mmc/mmc-uclass.c b/drivers/mmc/mmc-uclass.c
+index 5dda20cda5..9c6a8ba476 100644
+--- a/drivers/mmc/mmc-uclass.c
++++ b/drivers/mmc/mmc-uclass.c
+@@ -51,6 +51,19 @@ int mmc_set_ios(struct mmc *mmc)
+ 	return dm_mmc_set_ios(mmc->dev);
+ }
+ 
++void dm_mmc_send_init_stream(struct udevice *dev)
++{
++	struct dm_mmc_ops *ops = mmc_get_ops(dev);
++
++	if (ops->send_init_stream)
++		ops->send_init_stream(dev);
++}
++
++void mmc_send_init_stream(struct mmc *mmc)
++{
++	dm_mmc_send_init_stream(mmc->dev);
++}
++
+ int dm_mmc_get_wp(struct udevice *dev)
+ {
+ 	struct dm_mmc_ops *ops = mmc_get_ops(dev);
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 24b5e16a3b..1875b31ad1 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1198,6 +1198,10 @@ static inline int bus_width(uint cap)
+ }
+ 
+ #if !CONFIG_IS_ENABLED(DM_MMC)
++static void mmc_send_init_stream(struct mmc *mmc)
++{
++}
++
+ static int mmc_set_ios(struct mmc *mmc)
+ {
+ 	int ret = 0;
+@@ -1983,6 +1987,8 @@ int mmc_start_init(struct mmc *mmc)
+ 	mmc_set_bus_width(mmc, 1);
+ 	mmc_set_clock(mmc, 1);
+ 
++	mmc_send_init_stream(mmc);
++
+ 	/* Reset the Card */
+ 	err = mmc_go_idle(mmc);
+ 
+diff --git a/include/mmc.h b/include/mmc.h
+index e5249637c8..bd096aeb21 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -360,6 +360,14 @@ struct dm_mmc_ops {
+ 	 */
+ 	int (*set_ios)(struct udevice *dev);
+ 
++	/**
++	 * send_init_stream() - send the initialization stream: 74 clock cycles
++	 * This is used after power up before sending the first command
++	 *
++	 * @dev:	Device to update
++	 */
++	void (*send_init_stream)(struct udevice *dev);
++
+ 	/**
+ 	 * get_cd() - See whether a card is present
+ 	 *
+@@ -382,11 +390,13 @@ struct dm_mmc_ops {
+ int dm_mmc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
+ 		    struct mmc_data *data);
+ int dm_mmc_set_ios(struct udevice *dev);
++void dm_mmc_send_init_stream(struct udevice *dev);
+ int dm_mmc_get_cd(struct udevice *dev);
+ int dm_mmc_get_wp(struct udevice *dev);
+ 
+ /* Transition functions for compatibility */
+ int mmc_set_ios(struct mmc *mmc);
++void mmc_send_init_stream(struct mmc *mmc);
+ int mmc_getcd(struct mmc *mmc);
+ int mmc_getwp(struct mmc *mmc);
+ 
+-- 
+2.15.1
+

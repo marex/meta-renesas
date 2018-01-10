@@ -1,0 +1,29 @@
+From e1f7232a39ab68cc58af84ac743da3887b967d64 Mon Sep 17 00:00:00 2001
+From: Jaehoon Chung <jh80.chung@samsung.com>
+Date: Mon, 27 Nov 2017 18:42:05 +0900
+Subject: [PATCH 35/56] mmc: meson_gx_mmc: fix the complie error
+
+mmc_set_clock() is changed.
+This patch is for fixing complie error.
+
+Signed-off-by: Jaehoon Chung <jh80.chung@samsung.com>
+---
+ drivers/mmc/meson_gx_mmc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/meson_gx_mmc.c b/drivers/mmc/meson_gx_mmc.c
+index 4652fab45e..a2cd5d3a44 100644
+--- a/drivers/mmc/meson_gx_mmc.c
++++ b/drivers/mmc/meson_gx_mmc.c
+@@ -250,7 +250,7 @@ static int meson_mmc_probe(struct udevice *dev)
+ 	mmc->priv = pdata;
+ 	upriv->mmc = mmc;
+ 
+-	mmc_set_clock(mmc, cfg->f_min);
++	mmc_set_clock(mmc, cfg->f_min, false);
+ 
+ 	/* reset all status bits */
+ 	meson_write(mmc, STATUS_MASK, MESON_SD_EMMC_STATUS);
+-- 
+2.15.1
+

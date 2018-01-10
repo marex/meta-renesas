@@ -1,0 +1,49 @@
+From 44ffcc3bb6189480482b298025854f9313fb9c19 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Sat, 23 Sep 2017 13:01:20 +0200
+Subject: [PATCH 55/56] mmc: uniphier-sd: Always check controller version
+
+Handle the controller version even if quirks are set. The controller in
+Renesas Gen3 SoCs does provide the version register, which indicates a
+controller v10 and the controller does support internal DMA and /1024
+divider.
+
+Signed-off-by: Marek Vasut <marek.vasut+renesas@gmail.com>
+Cc: Jaehoon Chung <jh80.chung@samsung.com>
+Cc: Masahiro Yamada <yamada.masahiro@socionext.com>
+---
+ drivers/mmc/uniphier-sd.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/mmc/uniphier-sd.c b/drivers/mmc/uniphier-sd.c
+index 62f2031a04..157002e10e 100644
+--- a/drivers/mmc/uniphier-sd.c
++++ b/drivers/mmc/uniphier-sd.c
+@@ -1120,16 +1120,15 @@ static int uniphier_sd_probe(struct udevice *dev)
+ 	plat->cfg.name = dev->name;
+ 	plat->cfg.host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
+ 
+-	if (quirks) {
++	if (quirks)
+ 		priv->caps = quirks;
+-	} else {
+-		priv->version = uniphier_sd_readl(priv, UNIPHIER_SD_VERSION) &
+-							UNIPHIER_SD_VERSION_IP;
+-		dev_dbg(dev, "version %x\n", priv->version);
+-		if (priv->version >= 0x10) {
+-			priv->caps |= UNIPHIER_SD_CAP_DMA_INTERNAL;
+-			priv->caps |= UNIPHIER_SD_CAP_DIV1024;
+-		}
++
++	priv->version = uniphier_sd_readl(priv, UNIPHIER_SD_VERSION) &
++						UNIPHIER_SD_VERSION_IP;
++	dev_dbg(dev, "version %x\n", priv->version);
++	if (priv->version >= 0x10) {
++		priv->caps |= UNIPHIER_SD_CAP_DMA_INTERNAL;
++		priv->caps |= UNIPHIER_SD_CAP_DIV1024;
+ 	}
+ 
+ 	if (fdt_get_property(gd->fdt_blob, dev_of_offset(dev), "non-removable",
+-- 
+2.15.1
+

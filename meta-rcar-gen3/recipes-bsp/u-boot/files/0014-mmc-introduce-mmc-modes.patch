@@ -1,0 +1,203 @@
+From 8dd0c1165114d8efd7d3ccf781992fff38c5937b Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 21 Sep 2017 16:29:53 +0200
+Subject: [PATCH 14/56] mmc: introduce mmc modes
+
+no functionnal changes.
+In order to add the support for the high speed SD and MMC modes, it is
+useful to track this information.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+---
+ drivers/mmc/Kconfig | 14 ++++++++++++++
+ drivers/mmc/mmc.c   | 56 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ include/mmc.h       | 35 +++++++++++++++++++++++++++------
+ 3 files changed, 92 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/mmc/Kconfig b/drivers/mmc/Kconfig
+index 8fbeaa740d..a8a689f4f5 100644
+--- a/drivers/mmc/Kconfig
++++ b/drivers/mmc/Kconfig
+@@ -42,6 +42,20 @@ config ARM_PL180_MMCI
+ 	  If you have an ARM(R) platform with a Multimedia Card slot,
+ 	  say Y or M here.
+ 
++config MMC_VERBOSE
++	bool "Output more information about the MMC"
++	default y
++	help
++	  Enable the output of more information about the card such as the
++	  operating mode.
++
++config SPL_MMC_VERBOSE
++	bool "Output more information about the MMC in SPL"
++	default n
++	help
++	  Enable the output of more information about the card such as the
++	  operating mode.
++
+ config SPL_MMC_TINY
+ 	bool "Tiny MMC framework in SPL"
+ 	help
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index c4067e210b..4bfc6bf441 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -149,6 +149,39 @@ void mmc_trace_state(struct mmc *mmc, struct mmc_cmd *cmd)
+ }
+ #endif
+ 
++#if CONFIG_IS_ENABLED(MMC_VERBOSE) || defined(DEBUG)
++const char *mmc_mode_name(enum bus_mode mode)
++{
++	static const char *const names[] = {
++	      [MMC_LEGACY]	= "MMC legacy",
++	      [SD_LEGACY]	= "SD Legacy",
++	      [MMC_HS]		= "MMC High Speed (26MHz)",
++	      [SD_HS]		= "SD High Speed (50MHz)",
++	      [UHS_SDR12]	= "UHS SDR12 (25MHz)",
++	      [UHS_SDR25]	= "UHS SDR25 (50MHz)",
++	      [UHS_SDR50]	= "UHS SDR50 (100MHz)",
++	      [UHS_SDR104]	= "UHS SDR104 (208MHz)",
++	      [UHS_DDR50]	= "UHS DDR50 (50MHz)",
++	      [MMC_HS_52]	= "MMC High Speed (52MHz)",
++	      [MMC_DDR_52]	= "MMC DDR52 (52MHz)",
++	      [MMC_HS_200]	= "HS200 (200MHz)",
++	};
++
++	if (mode >= MMC_MODES_END)
++		return "Unknown mode";
++	else
++		return names[mode];
++}
++#endif
++
++static int mmc_select_mode(struct mmc *mmc, enum bus_mode mode)
++{
++	mmc->selected_mode = mode;
++	debug("selecting mode %s (freq : %d MHz)\n", mmc_mode_name(mode),
++	      mmc->tran_speed / 1000000);
++	return 0;
++}
++
+ #if !CONFIG_IS_ENABLED(DM_MMC)
+ int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
+ {
+@@ -1138,10 +1171,13 @@ static int sd_select_bus_freq_width(struct mmc *mmc)
+ 	if (err)
+ 		return err;
+ 
+-	if (mmc->card_caps & MMC_MODE_HS)
++	if (mmc->card_caps & MMC_MODE_HS) {
++		mmc_select_mode(mmc, SD_HS);
+ 		mmc->tran_speed = 50000000;
+-	else
++	} else {
++		mmc_select_mode(mmc, SD_LEGACY);
+ 		mmc->tran_speed = 25000000;
++	}
+ 
+ 	return 0;
+ }
+@@ -1258,11 +1294,15 @@ static int mmc_select_bus_freq_width(struct mmc *mmc)
+ 	if (err)
+ 		return err;
+ 
+-	if (mmc->card_caps & MMC_MODE_HS) {
+-		if (mmc->card_caps & MMC_MODE_HS_52MHz)
+-			mmc->tran_speed = 52000000;
++	if (mmc->card_caps & MMC_MODE_HS_52MHz) {
++		if (mmc->ddr_mode)
++			mmc_select_mode(mmc, MMC_DDR_52);
+ 		else
+-			mmc->tran_speed = 26000000;
++			mmc_select_mode(mmc, MMC_HS_52);
++		mmc->tran_speed = 52000000;
++	} else if (mmc->card_caps & MMC_MODE_HS) {
++		mmc_select_mode(mmc, MMC_HS);
++		mmc->tran_speed = 26000000;
+ 	}
+ 
+ 	return err;
+@@ -1534,7 +1574,9 @@ static int mmc_startup(struct mmc *mmc)
+ 	freq = fbase[(cmd.response[0] & 0x7)];
+ 	mult = multipliers[((cmd.response[0] >> 3) & 0xf)];
+ 
+-	mmc->tran_speed = freq * mult;
++	mmc->legacy_speed = freq * mult;
++	mmc->tran_speed = mmc->legacy_speed;
++	mmc_select_mode(mmc, MMC_LEGACY);
+ 
+ 	mmc->dsr_imp = ((cmd.response[1] >> 12) & 0x1);
+ 	mmc->read_bl_len = 1 << ((cmd.response[1] >> 16) & 0xf);
+diff --git a/include/mmc.h b/include/mmc.h
+index 7d2b363acb..76bd57ae42 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -52,12 +52,15 @@
+ #define MMC_VERSION_5_0		MAKE_MMC_VERSION(5, 0, 0)
+ #define MMC_VERSION_5_1		MAKE_MMC_VERSION(5, 1, 0)
+ 
+-#define MMC_MODE_HS		(1 << 0)
+-#define MMC_MODE_HS_52MHz	(1 << 1)
+-#define MMC_MODE_4BIT		(1 << 2)
+-#define MMC_MODE_8BIT		(1 << 3)
+-#define MMC_MODE_SPI		(1 << 4)
+-#define MMC_MODE_DDR_52MHz	(1 << 5)
++#define MMC_CAP(mode)		(1 << mode)
++#define MMC_MODE_HS		(MMC_CAP(MMC_HS) | MMC_CAP(SD_HS))
++#define MMC_MODE_HS_52MHz	MMC_CAP(MMC_HS_52)
++#define MMC_MODE_DDR_52MHz	MMC_CAP(MMC_DDR_52)
++
++#define MMC_MODE_8BIT		BIT(30)
++#define MMC_MODE_4BIT		BIT(29)
++#define MMC_MODE_SPI		BIT(27)
++
+ 
+ #define SD_DATA_4BIT	0x00040000
+ 
+@@ -406,6 +409,24 @@ struct sd_ssr {
+ 	unsigned int erase_offset;	/* In milliseconds */
+ };
+ 
++enum bus_mode {
++	MMC_LEGACY,
++	SD_LEGACY,
++	MMC_HS,
++	SD_HS,
++	UHS_SDR12,
++	UHS_SDR25,
++	UHS_SDR50,
++	UHS_SDR104,
++	UHS_DDR50,
++	MMC_HS_52,
++	MMC_DDR_52,
++	MMC_HS_200,
++	MMC_MODES_END
++};
++
++const char *mmc_mode_name(enum bus_mode mode);
++
+ /*
+  * With CONFIG_DM_MMC enabled, struct mmc can be accessed from the MMC device
+  * with mmc_get_mmc_dev().
+@@ -436,6 +457,7 @@ struct mmc {
+ 	u8 wr_rel_set;
+ 	u8 part_config;
+ 	uint tran_speed;
++	uint legacy_speed; /* speed for the legacy mode provided by the card */
+ 	uint read_bl_len;
+ 	uint write_bl_len;
+ 	uint erase_grp_size;	/* in 512-byte sectors */
+@@ -463,6 +485,7 @@ struct mmc {
+ #endif
+ #endif
+ 	u8 *ext_csd;
++	enum bus_mode selected_mode;
+ };
+ 
+ struct mmc_hwpart_conf {
+-- 
+2.15.1
+

@@ -1,0 +1,64 @@
+From 20dc561ea04b2344014fef06940170f8da52ae9a Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 21 Sep 2017 16:29:54 +0200
+Subject: [PATCH 15/56] mmc: Add a function to dump the mmc capabilities
+
+This adds a simple helper function to display information (bus width and
+mode) based on a capability mask. Useful for debug.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc.c | 24 ++++++++++++++++++++++++
+ include/mmc.h     |  1 +
+ 2 files changed, 25 insertions(+)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 4bfc6bf441..ae82914396 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1136,6 +1136,30 @@ static void mmc_set_bus_width(struct mmc *mmc, uint width)
+ 	mmc_set_ios(mmc);
+ }
+ 
++#if CONFIG_IS_ENABLED(MMC_VERBOSE) || defined(DEBUG)
++/*
++ * helper function to display the capabilities in a human
++ * friendly manner. The capabilities include bus width and
++ * supported modes.
++ */
++void mmc_dump_capabilities(const char *text, uint caps)
++{
++	enum bus_mode mode;
++
++	printf("%s: widths [", text);
++	if (caps & MMC_MODE_8BIT)
++		printf("8, ");
++	if (caps & MMC_MODE_4BIT)
++		printf("4, ");
++	printf("1] modes [");
++
++	for (mode = MMC_LEGACY; mode < MMC_MODES_END; mode++)
++		if (MMC_CAP(mode) & caps)
++			printf("%s, ", mmc_mode_name(mode));
++	printf("\b\b]\n");
++}
++#endif
++
+ static int sd_select_bus_freq_width(struct mmc *mmc)
+ {
+ 	int err;
+diff --git a/include/mmc.h b/include/mmc.h
+index 76bd57ae42..dd83f14b6c 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -426,6 +426,7 @@ enum bus_mode {
+ };
+ 
+ const char *mmc_mode_name(enum bus_mode mode);
++void mmc_dump_capabilities(const char *text, uint caps);
+ 
+ /*
+  * With CONFIG_DM_MMC enabled, struct mmc can be accessed from the MMC device
+-- 
+2.15.1
+

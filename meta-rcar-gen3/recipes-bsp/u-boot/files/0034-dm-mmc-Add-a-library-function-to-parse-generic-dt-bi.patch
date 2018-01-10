@@ -1,0 +1,91 @@
+From 08f41f0f1816819b51a85383137371b1befae357 Mon Sep 17 00:00:00 2001
+From: Kishon Vijay Abraham I <kishon@ti.com>
+Date: Thu, 21 Sep 2017 16:30:13 +0200
+Subject: [PATCH 34/56] dm: mmc: Add a library function to parse generic dt
+ binding
+
+Add a new function to parse host controller dt node and
+set mmc_config. This function can be used by mmc controller
+drivers to set the generic mmc_config.
+This function can be extended to set other UHS mode caps
+once UHS mode support is added.
+
+Signed-off-by: Kishon Vijay Abraham I <kishon@ti.com>
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc-uclass.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ include/mmc.h            |  1 +
+ 2 files changed, 47 insertions(+)
+
+diff --git a/drivers/mmc/mmc-uclass.c b/drivers/mmc/mmc-uclass.c
+index 7856e0ad08..e30cde7f68 100644
+--- a/drivers/mmc/mmc-uclass.c
++++ b/drivers/mmc/mmc-uclass.c
+@@ -120,6 +120,52 @@ int mmc_execute_tuning(struct mmc *mmc, uint opcode)
+ 	return dm_mmc_execute_tuning(mmc->dev, opcode);
+ }
+ 
++int mmc_of_parse(const void *fdt, int node, struct mmc_config *cfg)
++{
++	int val;
++
++	val = fdtdec_get_int(fdt, node, "bus-width", 1);
++
++	switch (val) {
++	case 0x8:
++		cfg->host_caps |= MMC_MODE_8BIT;
++		/* fall through */
++	case 0x4:
++		cfg->host_caps |= MMC_MODE_4BIT;
++		/* fall through */
++	case 0x1:
++		cfg->host_caps |= MMC_MODE_1BIT;
++		break;
++	default:
++		printf("error: %s invalid bus-width property %d\n",
++		       fdt_get_name(fdt, node, NULL), val);
++		return -ENOENT;
++	}
++
++	cfg->f_max = fdtdec_get_int(fdt, node, "max-frequency", 52000000);
++
++	if (fdtdec_get_bool(fdt, node, "cap-sd-highspeed"))
++		cfg->host_caps |= MMC_CAP(SD_HS);
++	if (fdtdec_get_bool(fdt, node, "cap-mmc-highspeed"))
++		cfg->host_caps |= MMC_CAP(MMC_HS);
++	if (fdtdec_get_bool(fdt, node, "sd-uhs-sdr12"))
++		cfg->host_caps |= MMC_CAP(UHS_SDR12);
++	if (fdtdec_get_bool(fdt, node, "sd-uhs-sdr25"))
++		cfg->host_caps |= MMC_CAP(UHS_SDR25);
++	if (fdtdec_get_bool(fdt, node, "sd-uhs-sdr50"))
++		cfg->host_caps |= MMC_CAP(UHS_SDR50);
++	if (fdtdec_get_bool(fdt, node, "sd-uhs-sdr104"))
++		cfg->host_caps |= MMC_CAP(UHS_SDR104);
++	if (fdtdec_get_bool(fdt, node, "sd-uhs-ddr50"))
++		cfg->host_caps |= MMC_CAP(UHS_DDR50);
++	if (fdtdec_get_bool(fdt, node, "mmc-ddr-1_8v"))
++		cfg->host_caps |= MMC_CAP(MMC_DDR_52);
++	if (fdtdec_get_bool(fdt, node, "mmc-hs200-1_8v"))
++		cfg->host_caps |= MMC_CAP(MMC_HS_200);
++
++	return 0;
++}
++
+ struct mmc *mmc_get_mmc_dev(struct udevice *dev)
+ {
+ 	struct mmc_uclass_priv *upriv;
+diff --git a/include/mmc.h b/include/mmc.h
+index 79be6b4bc3..6230a32823 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -651,6 +651,7 @@ int mmc_unbind(struct udevice *dev);
+ int mmc_initialize(bd_t *bis);
+ int mmc_init(struct mmc *mmc);
+ int mmc_send_tuning(struct mmc *mmc, u32 opcode, int *cmd_error);
++int mmc_of_parse(const void *fdt, int node, struct mmc_config *cfg);
+ int mmc_read(struct mmc *mmc, u64 src, uchar *dst, int size);
+ 
+ /**
+-- 
+2.15.1
+

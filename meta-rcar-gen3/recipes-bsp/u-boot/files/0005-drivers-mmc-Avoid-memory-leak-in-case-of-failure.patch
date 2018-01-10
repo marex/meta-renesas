@@ -1,0 +1,45 @@
+From de70f437152b2f95288d0ee47dc5ef03d4b304ab Mon Sep 17 00:00:00 2001
+From: Suniel Mahesh <sunil.m@techveda.org>
+Date: Thu, 5 Oct 2017 11:48:56 +0530
+Subject: [PATCH 05/56] drivers: mmc: Avoid memory leak in case of failure
+
+priv pointer should be freed before returning with an error value
+from exynos_dwmci_get_config().
+
+Signed-off-by: Suniel Mahesh <sunil.m@techveda.org>
+Signed-off-by: Raghu Bharadwaj <raghu@techveda.org>
+---
+ drivers/mmc/exynos_dw_mmc.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/mmc/exynos_dw_mmc.c b/drivers/mmc/exynos_dw_mmc.c
+index 5edd383c68..e40575e589 100644
+--- a/drivers/mmc/exynos_dw_mmc.c
++++ b/drivers/mmc/exynos_dw_mmc.c
+@@ -168,6 +168,7 @@ static int exynos_dwmci_get_config(const void *blob, int node,
+ 
+ 	if (host->dev_index > 4) {
+ 		printf("DWMMC%d: Can't get the dev index\n", host->dev_index);
++		free(priv);
+ 		return -EINVAL;
+ 	}
+ 
+@@ -178,6 +179,7 @@ static int exynos_dwmci_get_config(const void *blob, int node,
+ 	base = fdtdec_get_addr(blob, node, "reg");
+ 	if (!base) {
+ 		printf("DWMMC%d: Can't get base address\n", host->dev_index);
++		free(priv);
+ 		return -EINVAL;
+ 	}
+ 	host->ioaddr = (void *)base;
+@@ -187,6 +189,7 @@ static int exynos_dwmci_get_config(const void *blob, int node,
+ 	if (err) {
+ 		printf("DWMMC%d: Can't get sdr-timings for devider\n",
+ 				host->dev_index);
++		free(priv);
+ 		return -EINVAL;
+ 	}
+ 
+-- 
+2.15.1
+

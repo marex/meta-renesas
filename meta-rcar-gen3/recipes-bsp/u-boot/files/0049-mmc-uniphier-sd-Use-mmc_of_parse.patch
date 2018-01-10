@@ -1,0 +1,53 @@
+From d8a49e1350f076dc2432bcc06a5d811e73c90141 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Sat, 23 Sep 2017 13:22:14 +0200
+Subject: [PATCH 49/56] mmc: uniphier-sd: Use mmc_of_parse()
+
+Drop the ad-hoc DT caps parsing in favor of common framework function.
+
+Signed-off-by: Marek Vasut <marek.vasut+renesas@gmail.com>
+Cc: Jaehoon Chung <jh80.chung@samsung.com>
+Cc: Masahiro Yamada <yamada.masahiro@socionext.com>
+---
+ drivers/mmc/uniphier-sd.c | 23 +++++++----------------
+ 1 file changed, 7 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/mmc/uniphier-sd.c b/drivers/mmc/uniphier-sd.c
+index 741f9dfd9c..552e37d852 100644
+--- a/drivers/mmc/uniphier-sd.c
++++ b/drivers/mmc/uniphier-sd.c
+@@ -799,24 +799,15 @@ static int uniphier_sd_probe(struct udevice *dev)
+ 		return ret;
+ 	}
+ 
+-	plat->cfg.name = dev->name;
+-	plat->cfg.host_caps = MMC_MODE_HS_52MHz | MMC_MODE_HS;
+-
+-	switch (fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "bus-width",
+-			       1)) {
+-	case 8:
+-		plat->cfg.host_caps |= MMC_MODE_8BIT;
+-		break;
+-	case 4:
+-		plat->cfg.host_caps |= MMC_MODE_4BIT;
+-		break;
+-	case 1:
+-		break;
+-	default:
+-		dev_err(dev, "Invalid \"bus-width\" value\n");
+-		return -EINVAL;
++	ret = mmc_of_parse(dev, &plat->cfg);
++	if (ret < 0) {
++		dev_err(dev, "failed to parse host caps\n");
++		return ret;
+ 	}
+ 
++	plat->cfg.name = dev->name;
++	plat->cfg.host_caps |= MMC_MODE_HS_52MHz | MMC_MODE_HS;
++
+ 	if (quirks) {
+ 		priv->caps = quirks;
+ 	} else {
+-- 
+2.15.1
+

@@ -1,0 +1,87 @@
+From 22f34e3ebc2ff1ac4f9b4a6158c9a24ce9b11455 Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 30 Nov 2017 17:44:02 +0100
+Subject: [PATCH 44/56] mmc: make optional the support for eMMC hardware
+ partitioning
+
+Not all boards have an eMMC and not all users have a need for this.
+Allow to compile it out. By default it is still included.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ cmd/mmc.c           | 4 ++++
+ drivers/mmc/Kconfig | 7 +++++++
+ drivers/mmc/mmc.c   | 2 ++
+ 3 files changed, 13 insertions(+)
+
+diff --git a/cmd/mmc.c b/cmd/mmc.c
+index 25795e0325..9a95293753 100644
+--- a/cmd/mmc.c
++++ b/cmd/mmc.c
+@@ -438,6 +438,7 @@ static int do_mmc_list(cmd_tbl_t *cmdtp, int flag,
+ 	return CMD_RET_SUCCESS;
+ }
+ 
++#if CONFIG_IS_ENABLED(MMC_HW_PARTITIONING)
+ static int parse_hwpart_user(struct mmc_hwpart_conf *pconf,
+ 			     int argc, char * const argv[])
+ {
+@@ -587,6 +588,7 @@ static int do_mmc_hwpartition(cmd_tbl_t *cmdtp, int flag,
+ 		return CMD_RET_FAILURE;
+ 	}
+ }
++#endif
+ 
+ #ifdef CONFIG_SUPPORT_EMMC_BOOT
+ static int do_mmc_bootbus(cmd_tbl_t *cmdtp, int flag,
+@@ -796,7 +798,9 @@ static cmd_tbl_t cmd_mmc[] = {
+ 	U_BOOT_CMD_MKENT(part, 1, 1, do_mmc_part, "", ""),
+ 	U_BOOT_CMD_MKENT(dev, 3, 0, do_mmc_dev, "", ""),
+ 	U_BOOT_CMD_MKENT(list, 1, 1, do_mmc_list, "", ""),
++#if CONFIG_IS_ENABLED(MMC_HW_PARTITIONING)
+ 	U_BOOT_CMD_MKENT(hwpartition, 28, 0, do_mmc_hwpartition, "", ""),
++#endif
+ #ifdef CONFIG_SUPPORT_EMMC_BOOT
+ 	U_BOOT_CMD_MKENT(bootbus, 5, 0, do_mmc_bootbus, "", ""),
+ 	U_BOOT_CMD_MKENT(bootpart-resize, 4, 0, do_mmc_boot_resize, "", ""),
+diff --git a/drivers/mmc/Kconfig b/drivers/mmc/Kconfig
+index 2fcdaddf22..d196eed540 100644
+--- a/drivers/mmc/Kconfig
++++ b/drivers/mmc/Kconfig
+@@ -51,6 +51,13 @@ config MMC_QUIRKS
+ 	  are enabled by default, other may require additionnal flags or are
+ 	  enabled by the host driver.
+ 
++config MMC_HW_PARTITIONING
++	bool "Support for HW partitioning command(eMMC)"
++	default y
++	help
++	  This adds a command and an API to do hardware partitioning on eMMC
++	  devices.
++
+ config MMC_IO_VOLTAGE
+ 	bool "Support IO voltage configuration"
+ 	help
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 400e163340..67d05c5413 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -950,6 +950,7 @@ int mmc_switch_part(struct mmc *mmc, unsigned int part_num)
+ 	return ret;
+ }
+ 
++#if CONFIG_IS_ENABLED(MMC_HW_PARTITIONING)
+ int mmc_hwpart_config(struct mmc *mmc,
+ 		      const struct mmc_hwpart_conf *conf,
+ 		      enum mmc_hwpart_conf_mode mode)
+@@ -1143,6 +1144,7 @@ int mmc_hwpart_config(struct mmc *mmc,
+ 
+ 	return 0;
+ }
++#endif
+ 
+ #if !CONFIG_IS_ENABLED(DM_MMC)
+ int mmc_getcd(struct mmc *mmc)
+-- 
+2.15.1
+

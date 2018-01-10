@@ -1,0 +1,51 @@
+From e7e47c0bc132d19e871c3fc1d48c2ce8a04a1d9a Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Tue, 26 Sep 2017 20:28:44 +0200
+Subject: [PATCH 51/56] mmc: uniphier-sd: Add Renesas RCar quirks
+
+Add a quirk to identify that the controller is Renesas RCar variant
+of the Matsushita SD IP and another quirk indicating it can support
+Renesas RCar HS200/HS400/SDR104 modes.
+
+Signed-off-by: Marek Vasut <marek.vasut+renesas@gmail.com>
+Cc: Jaehoon Chung <jh80.chung@samsung.com>
+Cc: Masahiro Yamada <yamada.masahiro@socionext.com>
+---
+ drivers/mmc/uniphier-sd.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/mmc/uniphier-sd.c b/drivers/mmc/uniphier-sd.c
+index ebcc12a8ae..bcc2dec459 100644
+--- a/drivers/mmc/uniphier-sd.c
++++ b/drivers/mmc/uniphier-sd.c
+@@ -135,6 +135,8 @@ struct uniphier_sd_priv {
+ #define UNIPHIER_SD_CAP_DMA_INTERNAL	BIT(1)	/* have internal DMA engine */
+ #define UNIPHIER_SD_CAP_DIV1024		BIT(2)	/* divisor 1024 is available */
+ #define UNIPHIER_SD_CAP_64BIT		BIT(3)	/* Controller is 64bit */
++#define UNIPHIER_SD_CAP_RCAR		BIT(4)	/* Renesas RCar version of IP */
++#define UNIPHIER_SD_CAP_RCAR_UHS	BIT(5)	/* Renesas RCar UHS/SDR modes */
+ #ifdef CONFIG_DM_REGULATOR
+ 	struct udevice *vqmmc_dev;
+ #endif
+@@ -852,11 +854,14 @@ static int uniphier_sd_probe(struct udevice *dev)
+ 	return 0;
+ }
+ 
++#define RENESAS_SD_QUIRKS					\
++	UNIPHIER_SD_CAP_64BIT | UNIPHIER_SD_CAP_RCAR | UNIPHIER_SD_CAP_RCAR_UHS
++
+ static const struct udevice_id uniphier_sd_match[] = {
+-	{ .compatible = "renesas,sdhi-r8a7795", .data = UNIPHIER_SD_CAP_64BIT },
+-	{ .compatible = "renesas,sdhi-r8a7796", .data = UNIPHIER_SD_CAP_64BIT },
+-	{ .compatible = "renesas,sdhi-r8a77970", .data = UNIPHIER_SD_CAP_64BIT },
+-	{ .compatible = "renesas,sdhi-r8a77995", .data = UNIPHIER_SD_CAP_64BIT },
++	{ .compatible = "renesas,sdhi-r8a7795", .data = RENESAS_SD_QUIRKS },
++	{ .compatible = "renesas,sdhi-r8a7796", .data = RENESAS_SD_QUIRKS },
++	{ .compatible = "renesas,sdhi-r8a77970", .data = RENESAS_SD_QUIRKS },
++	{ .compatible = "renesas,sdhi-r8a77995", .data = RENESAS_SD_QUIRKS },
+ 	{ .compatible = "socionext,uniphier-sdhc", .data = 0 },
+ 	{ /* sentinel */ }
+ };
+-- 
+2.15.1
+

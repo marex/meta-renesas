@@ -1,0 +1,73 @@
+From 264978e5f621f01281f099264207b8c00a4e4fc6 Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 21 Sep 2017 16:29:48 +0200
+Subject: [PATCH 09/56] mmc: dm: get the IO-line and main voltage regulators
+ from the dts
+
+Get a reference to the regulator devices from the dts and store them
+in the struct mmc for later use.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc.c | 24 ++++++++++++++----------
+ include/mmc.h     |  4 ++++
+ 2 files changed, 18 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 8716ac7308..73a46121d8 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1618,21 +1618,25 @@ __weak void board_mmc_power_init(void)
+ static int mmc_power_init(struct mmc *mmc)
+ {
+ #if CONFIG_IS_ENABLED(DM_MMC)
+-#if defined(CONFIG_DM_REGULATOR) && !defined(CONFIG_SPL_BUILD)
+-	struct udevice *vmmc_supply;
++#if CONFIG_IS_ENABLED(DM_REGULATOR)
+ 	int ret;
+ 
+ 	ret = device_get_supply_regulator(mmc->dev, "vmmc-supply",
+-					  &vmmc_supply);
+-	if (ret) {
++					  &mmc->vmmc_supply);
++	if (ret)
+ 		debug("%s: No vmmc supply\n", mmc->dev->name);
+-		return 0;
+-	}
+ 
+-	ret = regulator_set_enable(vmmc_supply, true);
+-	if (ret) {
+-		puts("Error enabling VMMC supply\n");
+-		return ret;
++	ret = device_get_supply_regulator(mmc->dev, "vqmmc-supply",
++					  &mmc->vqmmc_supply);
++	if (ret)
++		debug("%s: No vqmmc supply\n", mmc->dev->name);
++
++	if (mmc->vmmc_supply) {
++		ret = regulator_set_enable(mmc->vmmc_supply, true);
++		if (ret) {
++			puts("Error enabling VMMC supply\n");
++			return ret;
++		}
+ 	}
+ #endif
+ #else /* !CONFIG_DM_MMC */
+diff --git a/include/mmc.h b/include/mmc.h
+index 010ebe048c..188dc749dd 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -457,6 +457,10 @@ struct mmc {
+ 	int ddr_mode;
+ #if CONFIG_IS_ENABLED(DM_MMC)
+ 	struct udevice *dev;	/* Device for this MMC controller */
++#if CONFIG_IS_ENABLED(DM_REGULATOR)
++	struct udevice *vmmc_supply;	/* Main voltage regulator (Vcc)*/
++	struct udevice *vqmmc_supply;	/* IO voltage regulator (Vccq)*/
++#endif
+ #endif
+ };
+ 
+-- 
+2.15.1
+

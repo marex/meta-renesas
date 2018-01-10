@@ -1,0 +1,31 @@
+From 12748fde93c35f59e71e303a0654f12aa2391ca1 Mon Sep 17 00:00:00 2001
+From: Felix Brack <fb@ltec.ch>
+Date: Wed, 11 Oct 2017 17:05:28 +0200
+Subject: [PATCH 06/56] mmc: sanitize includes for DM i2c
+
+This patch fixes some warnings when building boards that do not define
+DM_I2C_COMPAT i.e. boards that entirely rely on the new i2c layer.
+Signed-off-by: Felix Brack <fb@ltec.ch>
+---
+ drivers/mmc/omap_hsmmc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mmc/omap_hsmmc.c b/drivers/mmc/omap_hsmmc.c
+index efa43896fc..30443d13a0 100644
+--- a/drivers/mmc/omap_hsmmc.c
++++ b/drivers/mmc/omap_hsmmc.c
+@@ -28,9 +28,9 @@
+ #include <mmc.h>
+ #include <part.h>
+ #include <i2c.h>
+-#include <twl4030.h>
+-#include <twl6030.h>
++#if defined(CONFIG_OMAP54XX) || defined(CONFIG_OMAP44XX)
+ #include <palmas.h>
++#endif
+ #include <asm/io.h>
+ #include <asm/arch/mmc_host_def.h>
+ #if !defined(CONFIG_SOC_KEYSTONE)
+-- 
+2.15.1
+

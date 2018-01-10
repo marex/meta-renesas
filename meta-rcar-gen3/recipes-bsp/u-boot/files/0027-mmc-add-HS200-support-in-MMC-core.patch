@@ -1,0 +1,138 @@
+From fd069cd227e7ccfc93f7d3072a6cfc6b1d9b7bc3 Mon Sep 17 00:00:00 2001
+From: Kishon Vijay Abraham I <kishon@ti.com>
+Date: Thu, 21 Sep 2017 16:30:06 +0200
+Subject: [PATCH 27/56] mmc: add HS200 support in MMC core
+
+Add HS200 to the list of supported modes and introduce tuning in the MMC
+startup process.
+
+Signed-off-by: Kishon Vijay Abraham I <kishon@ti.com>
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+---
+ drivers/mmc/mmc.c | 22 ++++++++++++++++++++--
+ include/mmc.h     | 18 ++++++++++++++++++
+ 2 files changed, 38 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index b06e4bc917..d59cce611e 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -621,6 +621,10 @@ static int mmc_set_card_speed(struct mmc *mmc, enum bus_mode mode)
+ 	case MMC_HS_52:
+ 	case MMC_DDR_52:
+ 		speed_bits = EXT_CSD_TIMING_HS;
++		break;
++	case MMC_HS_200:
++		speed_bits = EXT_CSD_TIMING_HS200;
++		break;
+ 	case MMC_LEGACY:
+ 		speed_bits = EXT_CSD_TIMING_LEGACY;
+ 		break;
+@@ -667,9 +671,12 @@ static int mmc_get_capabilities(struct mmc *mmc)
+ 
+ 	mmc->card_caps |= MMC_MODE_4BIT | MMC_MODE_8BIT;
+ 
+-	cardtype = ext_csd[EXT_CSD_CARD_TYPE] & 0xf;
++	cardtype = ext_csd[EXT_CSD_CARD_TYPE] & 0x3f;
+ 
+-	/* High Speed is set, there are two types: 52MHz and 26MHz */
++	if (cardtype & (EXT_CSD_CARD_TYPE_HS200_1_2V |
++			EXT_CSD_CARD_TYPE_HS200_1_8V)) {
++		mmc->card_caps |= MMC_MODE_HS200;
++	}
+ 	if (cardtype & EXT_CSD_CARD_TYPE_52) {
+ 		if (cardtype & EXT_CSD_CARD_TYPE_DDR_52)
+ 			mmc->card_caps |= MMC_MODE_DDR_52MHz;
+@@ -1268,6 +1275,7 @@ void mmc_dump_capabilities(const char *text, uint caps)
+ struct mode_width_tuning {
+ 	enum bus_mode mode;
+ 	uint widths;
++	uint tuning;
+ };
+ 
+ static int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage)
+@@ -1383,6 +1391,7 @@ static const struct mode_width_tuning mmc_modes_by_pref[] = {
+ 	{
+ 		.mode = MMC_HS_200,
+ 		.widths = MMC_MODE_8BIT | MMC_MODE_4BIT,
++		.tuning = MMC_CMD_SEND_TUNING_BLOCK_HS200
+ 	},
+ 	{
+ 		.mode = MMC_DDR_52,
+@@ -1484,6 +1493,15 @@ static int mmc_select_mode_and_width(struct mmc *mmc)
+ 			mmc_select_mode(mmc, mwt->mode);
+ 			mmc_set_clock(mmc, mmc->tran_speed, false);
+ 
++			/* execute tuning if needed */
++			if (mwt->tuning) {
++				err = mmc_execute_tuning(mmc, mwt->tuning);
++				if (err) {
++					debug("tuning failed\n");
++					goto error;
++				}
++			}
++
+ 			/* do a transfer to check the configuration */
+ 			err = mmc_read_and_compare_ext_csd(mmc);
+ 			if (!err)
+diff --git a/include/mmc.h b/include/mmc.h
+index 56fa869ea8..407fddf94c 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -56,6 +56,7 @@
+ #define MMC_MODE_HS		(MMC_CAP(MMC_HS) | MMC_CAP(SD_HS))
+ #define MMC_MODE_HS_52MHz	MMC_CAP(MMC_HS_52)
+ #define MMC_MODE_DDR_52MHz	MMC_CAP(MMC_DDR_52)
++#define MMC_MODE_HS200		MMC_CAP(MMC_HS_200)
+ 
+ #define MMC_MODE_8BIT		BIT(30)
+ #define MMC_MODE_4BIT		BIT(29)
+@@ -86,6 +87,7 @@
+ #define MMC_CMD_SET_BLOCKLEN		16
+ #define MMC_CMD_READ_SINGLE_BLOCK	17
+ #define MMC_CMD_READ_MULTIPLE_BLOCK	18
++#define MMC_CMD_SEND_TUNING_BLOCK_HS200	21
+ #define MMC_CMD_SET_BLOCK_COUNT         23
+ #define MMC_CMD_WRITE_SINGLE_BLOCK	24
+ #define MMC_CMD_WRITE_MULTIPLE_BLOCK	25
+@@ -113,6 +115,13 @@
+ #define SD_CMD_APP_SEND_OP_COND		41
+ #define SD_CMD_APP_SEND_SCR		51
+ 
++static inline bool mmc_is_tuning_cmd(uint cmdidx)
++{
++	if (cmdidx == MMC_CMD_SEND_TUNING_BLOCK_HS200)
++		return true;
++	return false;
++}
++
+ /* SCR definitions in different words */
+ #define SD_HIGHSPEED_BUSY	0x00020000
+ #define SD_HIGHSPEED_SUPPORTED	0x00020000
+@@ -210,6 +219,13 @@
+ #define EXT_CSD_CARD_TYPE_DDR_52	(EXT_CSD_CARD_TYPE_DDR_1_8V \
+ 					| EXT_CSD_CARD_TYPE_DDR_1_2V)
+ 
++#define EXT_CSD_CARD_TYPE_HS200_1_8V	BIT(4)	/* Card can run at 200MHz */
++						/* SDR mode @1.8V I/O */
++#define EXT_CSD_CARD_TYPE_HS200_1_2V	BIT(5)	/* Card can run at 200MHz */
++						/* SDR mode @1.2V I/O */
++#define EXT_CSD_CARD_TYPE_HS200		(EXT_CSD_CARD_TYPE_HS200_1_8V | \
++					 EXT_CSD_CARD_TYPE_HS200_1_2V)
++
+ #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
+ #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
+ #define EXT_CSD_BUS_WIDTH_8	2	/* Card is in 8 bit mode */
+@@ -219,6 +235,8 @@
+ 
+ #define EXT_CSD_TIMING_LEGACY	0	/* no high speed */
+ #define EXT_CSD_TIMING_HS	1	/* HS */
++#define EXT_CSD_TIMING_HS200	2	/* HS200 */
++
+ #define EXT_CSD_BOOT_ACK_ENABLE			(1 << 6)
+ #define EXT_CSD_BOOT_PARTITION_ENABLE		(1 << 3)
+ #define EXT_CSD_PARTITION_ACCESS_ENABLE		(1 << 0)
+-- 
+2.15.1
+

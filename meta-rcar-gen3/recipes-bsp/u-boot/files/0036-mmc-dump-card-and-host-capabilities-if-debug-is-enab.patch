@@ -1,0 +1,63 @@
+From 828b0689a4d111e1b8846a893f9b95141f021c19 Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 30 Nov 2017 17:43:54 +0100
+Subject: [PATCH 36/56] mmc: dump card and host capabilities if debug is
+ enabled
+
+This is a useful information while debugging the initialization process or
+performance issues.
+Also dump this information with the other mmc info if the verbose option
+is selected
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ cmd/mmc.c         | 4 ++++
+ drivers/mmc/mmc.c | 9 +++++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/cmd/mmc.c b/cmd/mmc.c
+index 6d48ecbe0b..25795e0325 100644
+--- a/cmd/mmc.c
++++ b/cmd/mmc.c
+@@ -24,7 +24,11 @@ static void print_mmcinfo(struct mmc *mmc)
+ 			(mmc->cid[1] >> 8) & 0xff, mmc->cid[1] & 0xff);
+ 
+ 	printf("Bus Speed: %d\n", mmc->clock);
++#if CONFIG_IS_ENABLED(MMC_VERBOSE)
+ 	printf("Mode : %s\n", mmc_mode_name(mmc->selected_mode));
++	mmc_dump_capabilities("card capabilities", mmc->card_caps);
++	mmc_dump_capabilities("host capabilities", mmc->host_caps);
++#endif
+ 	printf("Rd Block Len: %d\n", mmc->read_bl_len);
+ 
+ 	printf("%s version %d.%d", IS_SD(mmc) ? "SD" : "MMC",
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index ab2483e9db..9b5c982578 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1582,6 +1582,10 @@ static int sd_select_mode_and_width(struct mmc *mmc, uint card_caps)
+ 	bool uhs_en = (mmc->ocr & OCR_S18R) ? true : false;
+ 	uint caps;
+ 
++#ifdef DEBUG
++	mmc_dump_capabilities("sd card", card_caps);
++	mmc_dump_capabilities("host", mmc->host_caps | MMC_MODE_1BIT);
++#endif
+ 
+ 	/* Restrict card's capabilities by what the host can do */
+ 	caps = card_caps & (mmc->host_caps | MMC_MODE_1BIT);
+@@ -1764,6 +1768,11 @@ static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps)
+ 	const struct mode_width_tuning *mwt;
+ 	const struct ext_csd_bus_width *ecbw;
+ 
++#ifdef DEBUG
++	mmc_dump_capabilities("mmc", card_caps);
++	mmc_dump_capabilities("host", mmc->host_caps | MMC_MODE_1BIT);
++#endif
++
+ 	/* Restrict card's capabilities by what the host can do */
+ 	card_caps &= (mmc->host_caps | MMC_MODE_1BIT);
+ 
+-- 
+2.15.1
+

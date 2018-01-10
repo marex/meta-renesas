@@ -1,0 +1,96 @@
+From 3be131752005ad52d5ad5720e1a7356adccd639f Mon Sep 17 00:00:00 2001
+From: Kishon Vijay Abraham I <kishon@ti.com>
+Date: Thu, 21 Sep 2017 16:30:05 +0200
+Subject: [PATCH 26/56] mmc: Add a execute_tuning() callback to the mmc
+ operations.
+
+Tuning is a mandatory step in the initialization of SDR104 and HS200 modes.
+This callback execute the tuning process.
+
+Signed-off-by: Kishon Vijay Abraham I <kishon@ti.com>
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc-uclass.c | 14 ++++++++++++++
+ drivers/mmc/mmc.c        |  5 +++++
+ include/mmc.h            | 11 +++++++++++
+ 3 files changed, 30 insertions(+)
+
+diff --git a/drivers/mmc/mmc-uclass.c b/drivers/mmc/mmc-uclass.c
+index 9c6a8ba476..60cc0ac4cc 100644
+--- a/drivers/mmc/mmc-uclass.c
++++ b/drivers/mmc/mmc-uclass.c
+@@ -92,6 +92,20 @@ int mmc_getcd(struct mmc *mmc)
+ 	return dm_mmc_get_cd(mmc->dev);
+ }
+ 
++int dm_mmc_execute_tuning(struct udevice *dev, uint opcode)
++{
++	struct dm_mmc_ops *ops = mmc_get_ops(dev);
++
++	if (!ops->execute_tuning)
++		return -ENOSYS;
++	return ops->execute_tuning(dev, opcode);
++}
++
++int mmc_execute_tuning(struct mmc *mmc, uint opcode)
++{
++	return dm_mmc_execute_tuning(mmc->dev, opcode);
++}
++
+ struct mmc *mmc_get_mmc_dev(struct udevice *dev)
+ {
+ 	struct mmc_uclass_priv *upriv;
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index be68d8d930..b06e4bc917 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1199,6 +1199,11 @@ static inline int bus_width(uint cap)
+ }
+ 
+ #if !CONFIG_IS_ENABLED(DM_MMC)
++static int mmc_execute_tuning(struct mmc *mmc, uint opcode)
++{
++	return -ENOTSUPP;
++}
++
+ static void mmc_send_init_stream(struct mmc *mmc)
+ {
+ }
+diff --git a/include/mmc.h b/include/mmc.h
+index 8d6e0f8fb0..56fa869ea8 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -383,6 +383,15 @@ struct dm_mmc_ops {
+ 	 * @return 0 if write-enabled, 1 if write-protected, -ve on error
+ 	 */
+ 	int (*get_wp)(struct udevice *dev);
++
++	/**
++	 * execute_tuning() - Start the tuning process
++	 *
++	 * @dev:	Device to start the tuning
++	 * @opcode:	Command opcode to send
++	 * @return 0 if OK, -ve on error
++	 */
++	int (*execute_tuning)(struct udevice *dev, uint opcode);
+ };
+ 
+ #define mmc_get_ops(dev)        ((struct dm_mmc_ops *)(dev)->driver->ops)
+@@ -393,12 +402,14 @@ int dm_mmc_set_ios(struct udevice *dev);
+ void dm_mmc_send_init_stream(struct udevice *dev);
+ int dm_mmc_get_cd(struct udevice *dev);
+ int dm_mmc_get_wp(struct udevice *dev);
++int dm_mmc_execute_tuning(struct udevice *dev, uint opcode);
+ 
+ /* Transition functions for compatibility */
+ int mmc_set_ios(struct mmc *mmc);
+ void mmc_send_init_stream(struct mmc *mmc);
+ int mmc_getcd(struct mmc *mmc);
+ int mmc_getwp(struct mmc *mmc);
++int mmc_execute_tuning(struct mmc *mmc, uint opcode);
+ 
+ #else
+ struct mmc_ops {
+-- 
+2.15.1
+

@@ -1,0 +1,77 @@
+From d658b808dd2228d2e5aabb5e5032f7c4c41680fc Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 30 Nov 2017 17:43:59 +0100
+Subject: [PATCH 41/56] mmc: don't use malloc_cache_aligned()
+
+Not using this function reduces the size of the binary. It's replaces by
+a standard malloc() and the alignment requirement is handled by an
+intermediate buffer on the stack.
+
+Also make sure that the allocated buffer is freed in case of error.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc.c | 26 +++++++++++++++++---------
+ 1 file changed, 17 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 2a58031c19..13979a5e81 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1867,21 +1867,23 @@ static int mmc_startup_v4(struct mmc *mmc)
+ 	u64 capacity;
+ 	bool has_parts = false;
+ 	bool part_completed;
+-	u8 *ext_csd;
++	ALLOC_CACHE_ALIGN_BUFFER(u8, ext_csd, MMC_MAX_BLOCK_LEN);
+ 
+ 	if (IS_SD(mmc) || (mmc->version < MMC_VERSION_4))
+ 		return 0;
+ 
+-	ext_csd = malloc_cache_aligned(MMC_MAX_BLOCK_LEN);
+-	if (!ext_csd)
+-		return -ENOMEM;
+-
+-	mmc->ext_csd = ext_csd;
+-
+ 	/* check  ext_csd version and capacity */
+ 	err = mmc_send_ext_csd(mmc, ext_csd);
+ 	if (err)
+-		return err;
++		goto error;
++
++	/* store the ext csd for future reference */
++	if (!mmc->ext_csd)
++		mmc->ext_csd = malloc(MMC_MAX_BLOCK_LEN);
++	if (!mmc->ext_csd)
++		return -ENOMEM;
++	memcpy(mmc->ext_csd, ext_csd, MMC_MAX_BLOCK_LEN);
++
+ 	if (ext_csd[EXT_CSD_REV] >= 2) {
+ 		/*
+ 		 * According to the JEDEC Standard, the value of
+@@ -1990,7 +1992,7 @@ static int mmc_startup_v4(struct mmc *mmc)
+ 				 EXT_CSD_ERASE_GROUP_DEF, 1);
+ 
+ 		if (err)
+-			return err;
++			goto error;
+ 
+ 		ext_csd[EXT_CSD_ERASE_GROUP_DEF] = 1;
+ 	}
+@@ -2029,6 +2031,12 @@ static int mmc_startup_v4(struct mmc *mmc)
+ 	mmc->wr_rel_set = ext_csd[EXT_CSD_WR_REL_SET];
+ 
+ 	return 0;
++error:
++	if (mmc->ext_csd) {
++		free(mmc->ext_csd);
++		mmc->ext_csd = NULL;
++	}
++	return err;
+ }
+ 
+ static int mmc_startup(struct mmc *mmc)
+-- 
+2.15.1
+

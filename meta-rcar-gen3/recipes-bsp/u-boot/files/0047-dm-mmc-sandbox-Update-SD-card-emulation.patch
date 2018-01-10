@@ -1,0 +1,38 @@
+From 8c5629cb1948c2825c53303127c26f7f8b68b24a Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 14 Dec 2017 11:47:14 +0100
+Subject: [PATCH 47/56] dm: mmc: sandbox: Update SD card emulation
+
+The SDcard initialization procedure does a few more things than it did earlier:
+* switch the bus width even for 1-bit bus width
+* check that speed has been properly set (in resp[4] of SD_CMD_SWITCH_FUNC)
+
+Update the SD simulator to handle those requests gracefully.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Reviewed-by: Jaehoon Chung <jh80.chung@samsung.com>
+---
+ drivers/mmc/sandbox_mmc.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/sandbox_mmc.c b/drivers/mmc/sandbox_mmc.c
+index fdb29a5505..8a5d256c11 100644
+--- a/drivers/mmc/sandbox_mmc.c
++++ b/drivers/mmc/sandbox_mmc.c
+@@ -48,9 +48,12 @@ static int sandbox_mmc_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
+ 		cmd->response[1] = 10 << 16;	/* 1 << block_len */
+ 		break;
+ 	case SD_CMD_SWITCH_FUNC: {
++		if (!data)
++			break;
+ 		u32 *resp = (u32 *)data->dest;
+-
+ 		resp[7] = cpu_to_be32(SD_HIGHSPEED_BUSY);
++		if ((cmd->cmdarg & 0xF) == UHS_SDR12_BUS_SPEED)
++			resp[4] = (cmd->cmdarg & 0xF) << 24;
+ 		break;
+ 	}
+ 	case MMC_CMD_READ_SINGLE_BLOCK:
+-- 
+2.15.1
+

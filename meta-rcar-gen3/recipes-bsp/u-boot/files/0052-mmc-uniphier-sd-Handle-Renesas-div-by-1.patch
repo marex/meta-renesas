@@ -1,0 +1,41 @@
+From 9e6380cf188a4b76557e77c1cee8b50a52425a94 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Tue, 26 Sep 2017 20:34:35 +0200
+Subject: [PATCH 52/56] mmc: uniphier-sd: Handle Renesas div-by-1
+
+On the Renesas version of the IP, the /1 divider is realized by
+setting the clock register [7:0] to 0xff instead of setting bit
+10 of the register. Check the quirk and handle accordingly.
+
+Signed-off-by: Marek Vasut <marek.vasut+renesas@gmail.com>
+Cc: Jaehoon Chung <jh80.chung@samsung.com>
+Cc: Masahiro Yamada <yamada.masahiro@socionext.com>
+---
+ drivers/mmc/uniphier-sd.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/uniphier-sd.c b/drivers/mmc/uniphier-sd.c
+index bcc2dec459..f0cf14c264 100644
+--- a/drivers/mmc/uniphier-sd.c
++++ b/drivers/mmc/uniphier-sd.c
+@@ -75,6 +75,7 @@ DECLARE_GLOBAL_DATA_PTR;
+ #define   UNIPHIER_SD_CLKCTL_DIV4	BIT(0)	/* SDCLK = CLK / 4 */
+ #define   UNIPHIER_SD_CLKCTL_DIV2	0	/* SDCLK = CLK / 2 */
+ #define   UNIPHIER_SD_CLKCTL_DIV1	BIT(10)	/* SDCLK = CLK */
++#define   UNIPHIER_SD_CLKCTL_RCAR_DIV1	0xff	/* SDCLK = CLK (RCar ver.) */
+ #define   UNIPHIER_SD_CLKCTL_OFFEN	BIT(9)	/* stop SDCLK when unused */
+ #define   UNIPHIER_SD_CLKCTL_SCLKEN	BIT(8)	/* SDCLK output enable */
+ #define UNIPHIER_SD_SIZE		0x04c	/* block size */
+@@ -641,7 +642,8 @@ static void uniphier_sd_set_clk_rate(struct uniphier_sd_priv *priv,
+ 	divisor = DIV_ROUND_UP(priv->mclk, mmc->clock);
+ 
+ 	if (divisor <= 1)
+-		val = UNIPHIER_SD_CLKCTL_DIV1;
++		val = (priv->caps & UNIPHIER_SD_CAP_RCAR) ?
++		      UNIPHIER_SD_CLKCTL_RCAR_DIV1 : UNIPHIER_SD_CLKCTL_DIV1;
+ 	else if (divisor <= 2)
+ 		val = UNIPHIER_SD_CLKCTL_DIV2;
+ 	else if (divisor <= 4)
+-- 
+2.15.1
+

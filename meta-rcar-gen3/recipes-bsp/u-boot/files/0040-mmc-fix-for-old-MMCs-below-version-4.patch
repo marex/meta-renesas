@@ -1,0 +1,30 @@
+From df532c184e34c79a57f0f7715f09d2084cd675ca Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 30 Nov 2017 17:43:58 +0100
+Subject: [PATCH 40/56] mmc: fix for old MMCs (below version 4)
+
+The ext_csd is allocated only for MMC above version 4. The compare will
+crash or fail for older MMCs.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 0ebcc45516..2a58031c19 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1657,6 +1657,9 @@ static int mmc_read_and_compare_ext_csd(struct mmc *mmc)
+ 	const u8 *ext_csd = mmc->ext_csd;
+ 	ALLOC_CACHE_ALIGN_BUFFER(u8, test_csd, MMC_MAX_BLOCK_LEN);
+ 
++	if (mmc->version < MMC_VERSION_4)
++		return 0;
++
+ 	err = mmc_send_ext_csd(mmc, test_csd);
+ 	if (err)
+ 		return err;
+-- 
+2.15.1
+

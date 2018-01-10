@@ -1,0 +1,31 @@
+From 0479d15ed779fc16ab09ca2d759c2f50f0ed95e9 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marek.vasut+renesas@gmail.com>
+Date: Thu, 11 Jan 2018 16:28:31 +0100
+Subject: [PATCH 03/56] clk: rmobile: Assure SD-IF clock are configured
+ correctly
+
+The SD driver calls clk_set_rate() before clk_enable(), yet clk_set_rate()
+implementation in the clock driver does not set the SD-IF divider. Fix it.
+
+Signed-off-by: Marek Vasut <marek.vasut+renesas@gmail.com>
+Cc: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
+---
+ drivers/clk/renesas/clk-rcar-gen3.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/clk/renesas/clk-rcar-gen3.c b/drivers/clk/renesas/clk-rcar-gen3.c
+index b26bbcc59f..44d6ba5797 100644
+--- a/drivers/clk/renesas/clk-rcar-gen3.c
++++ b/drivers/clk/renesas/clk-rcar-gen3.c
+@@ -1216,6 +1216,8 @@ static ulong gen3_clk_get_rate(struct clk *clk)
+ 
+ static ulong gen3_clk_set_rate(struct clk *clk, ulong rate)
+ {
++	/* Force correct SD-IF divider configuration if applicable */
++	gen3_clk_setup_sdif_div(clk);
+ 	return gen3_clk_get_rate(clk);
+ }
+ 
+-- 
+2.15.1
+

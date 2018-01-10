@@ -1,0 +1,77 @@
+From edf6efa0e3879024ff84e271ce4f2bccf0c7b4f1 Mon Sep 17 00:00:00 2001
+From: Kishon Vijay Abraham I <kishon@ti.com>
+Date: Thu, 21 Sep 2017 16:29:59 +0200
+Subject: [PATCH 20/56] mmc: make mmc_set_ios() return status
+
+set_ios callback has a return value of 'int' but the mmc_set_ios()
+function ignore this. Modify mmc_set_ios() and the callers of mmc_set_ios() to
+to return the error status.
+
+Signed-off-by: Kishon Vijay Abraham I <kishon@ti.com>
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+---
+ drivers/mmc/mmc.c | 16 ++++++++++------
+ include/mmc.h     |  2 +-
+ 2 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 822b66b906..588cfb2b2e 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1196,14 +1196,18 @@ static inline int bus_width(uint cap)
+ }
+ 
+ #if !CONFIG_IS_ENABLED(DM_MMC)
+-static void mmc_set_ios(struct mmc *mmc)
++static int mmc_set_ios(struct mmc *mmc)
+ {
++	int ret = 0;
++
+ 	if (mmc->cfg->ops->set_ios)
+-		mmc->cfg->ops->set_ios(mmc);
++		ret = mmc->cfg->ops->set_ios(mmc);
++
++	return ret;
+ }
+ #endif
+ 
+-void mmc_set_clock(struct mmc *mmc, uint clock)
++int mmc_set_clock(struct mmc *mmc, uint clock)
+ {
+ 	if (clock > mmc->cfg->f_max)
+ 		clock = mmc->cfg->f_max;
+@@ -1213,14 +1217,14 @@ void mmc_set_clock(struct mmc *mmc, uint clock)
+ 
+ 	mmc->clock = clock;
+ 
+-	mmc_set_ios(mmc);
++	return mmc_set_ios(mmc);
+ }
+ 
+-static void mmc_set_bus_width(struct mmc *mmc, uint width)
++static int mmc_set_bus_width(struct mmc *mmc, uint width)
+ {
+ 	mmc->bus_width = width;
+ 
+-	mmc_set_ios(mmc);
++	return mmc_set_ios(mmc);
+ }
+ 
+ #if CONFIG_IS_ENABLED(MMC_VERBOSE) || defined(DEBUG)
+diff --git a/include/mmc.h b/include/mmc.h
+index 988bf177d7..3e57887af0 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -549,7 +549,7 @@ int mmc_unbind(struct udevice *dev);
+ int mmc_initialize(bd_t *bis);
+ int mmc_init(struct mmc *mmc);
+ int mmc_read(struct mmc *mmc, u64 src, uchar *dst, int size);
+-void mmc_set_clock(struct mmc *mmc, uint clock);
++int mmc_set_clock(struct mmc *mmc, uint clock);
+ struct mmc *find_mmc_device(int dev_num);
+ int mmc_set_dev(int dev_num);
+ void print_mmc_devices(char separator);
+-- 
+2.15.1
+

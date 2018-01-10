@@ -1,0 +1,149 @@
+From 4c15dabf2aae1ec639e436b5561f0aa317402632 Mon Sep 17 00:00:00 2001
+From: Kishon Vijay Abraham I <kishon@ti.com>
+Date: Thu, 21 Sep 2017 16:30:10 +0200
+Subject: [PATCH 31/56] mmc: Retry some MMC cmds on failure
+
+With certain SD cards like Kingston 8GB/16GB UHS card, it is seen that
+MMC_CMD_ALL_SEND_CID cmd fails on first attempt, but succeeds
+subsequently. Therefore, retry MMC_CMD_ALL_SEND_CID cmd a few time
+as done in Linux kernel.
+Similarly, it is seen that MMC_CMD_SET_BLOCKLEN may fail on first
+attempt, therefore retry this cmd a few times as done in kernel.
+
+To make it clear that those are optionnal workarounds, a new Kconfig
+option 'MMC_QUIRKS' is added (enabled by default).
+
+Signed-off-by: Vignesh R <vigneshr@ti.com>
+Signed-off-by: Kishon Vijay Abraham I <kishon@ti.com>
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/Kconfig |  9 +++++++++
+ drivers/mmc/mmc.c   | 41 +++++++++++++++++++++++++++++++++++++++--
+ include/mmc.h       |  4 ++++
+ 3 files changed, 52 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mmc/Kconfig b/drivers/mmc/Kconfig
+index a8a689f4f5..006c9016a6 100644
+--- a/drivers/mmc/Kconfig
++++ b/drivers/mmc/Kconfig
+@@ -42,6 +42,15 @@ config ARM_PL180_MMCI
+ 	  If you have an ARM(R) platform with a Multimedia Card slot,
+ 	  say Y or M here.
+ 
++config MMC_QUIRKS
++	bool "Enable quirks"
++	default y
++	help
++	  Some cards and hosts may sometimes behave unexpectedly (quirks).
++	  This option enable workarounds to handle those quirks. Some of them
++	  are enabled by default, other may require additionnal flags or are
++	  enabled by the host driver.
++
+ config MMC_VERBOSE
+ 	bool "Output more information about the MMC"
+ 	default y
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 6278d1fa0c..26589b8771 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -279,6 +279,7 @@ int mmc_send_status(struct mmc *mmc, int timeout)
+ int mmc_set_blocklen(struct mmc *mmc, int len)
+ {
+ 	struct mmc_cmd cmd;
++	int err;
+ 
+ 	if (mmc->ddr_mode)
+ 		return 0;
+@@ -287,7 +288,24 @@ int mmc_set_blocklen(struct mmc *mmc, int len)
+ 	cmd.resp_type = MMC_RSP_R1;
+ 	cmd.cmdarg = len;
+ 
+-	return mmc_send_cmd(mmc, &cmd, NULL);
++	err = mmc_send_cmd(mmc, &cmd, NULL);
++
++#ifdef CONFIG_MMC_QUIRKS
++	if (err && (mmc->quirks & MMC_QUIRK_RETRY_SET_BLOCKLEN)) {
++		int retries = 4;
++		/*
++		 * It has been seen that SET_BLOCKLEN may fail on the first
++		 * attempt, let's try a few more time
++		 */
++		do {
++			err = mmc_send_cmd(mmc, &cmd, NULL);
++			if (!err)
++				break;
++		} while (retries--);
++	}
++#endif
++
++	return err;
+ }
+ 
+ static int mmc_read_blocks(struct mmc *mmc, void *dst, lbaint_t start,
+@@ -1881,7 +1899,6 @@ static int mmc_startup(struct mmc *mmc)
+ 		cmd.resp_type = MMC_RSP_R1;
+ 		cmd.cmdarg = 1;
+ 		err = mmc_send_cmd(mmc, &cmd, NULL);
+-
+ 		if (err)
+ 			return err;
+ 	}
+@@ -1895,6 +1912,21 @@ static int mmc_startup(struct mmc *mmc)
+ 
+ 	err = mmc_send_cmd(mmc, &cmd, NULL);
+ 
++#ifdef CONFIG_MMC_QUIRKS
++	if (err && (mmc->quirks & MMC_QUIRK_RETRY_SEND_CID)) {
++		int retries = 4;
++		/*
++		 * It has been seen that SEND_CID may fail on the first
++		 * attempt, let's try a few more time
++		 */
++		do {
++			err = mmc_send_cmd(mmc, &cmd, NULL);
++			if (!err)
++				break;
++		} while (retries--);
++	}
++#endif
++
+ 	if (err)
+ 		return err;
+ 
+@@ -2239,6 +2271,11 @@ int mmc_start_init(struct mmc *mmc)
+ 	if (err)
+ 		return err;
+ 
++#ifdef CONFIG_MMC_QUIRKS
++	mmc->quirks = MMC_QUIRK_RETRY_SET_BLOCKLEN |
++		      MMC_QUIRK_RETRY_SEND_CID;
++#endif
++
+ 	err = mmc_power_cycle(mmc);
+ 	if (err) {
+ 		/*
+diff --git a/include/mmc.h b/include/mmc.h
+index a8901bffc7..a9ebc880cb 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -306,6 +306,9 @@ static inline bool mmc_is_tuning_cmd(uint cmdidx)
+ #define ENHNCD_SUPPORT		(0x2)
+ #define PART_ENH_ATTRIB		(0x1f)
+ 
++#define MMC_QUIRK_RETRY_SEND_CID	BIT(0)
++#define MMC_QUIRK_RETRY_SET_BLOCKLEN	BIT(1)
++
+ enum mmc_voltage {
+ 	MMC_SIGNAL_VOLTAGE_000 = 0,
+ 	MMC_SIGNAL_VOLTAGE_120,
+@@ -591,6 +594,7 @@ struct mmc {
+ 				  * operating mode due to limitations when
+ 				  * accessing the boot partitions
+ 				  */
++	u32 quirks;
+ };
+ 
+ struct mmc_hwpart_conf {
+-- 
+2.15.1
+

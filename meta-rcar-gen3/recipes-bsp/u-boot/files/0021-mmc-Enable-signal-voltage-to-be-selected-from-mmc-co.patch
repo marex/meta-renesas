@@ -1,0 +1,87 @@
+From 4a6d4a627fe085d8be684226b98f334e46d49f6a Mon Sep 17 00:00:00 2001
+From: Kishon Vijay Abraham I <kishon@ti.com>
+Date: Thu, 21 Sep 2017 16:30:00 +0200
+Subject: [PATCH 21/56] mmc: Enable signal voltage to be selected from mmc core
+
+Add a new function *mmc_set_signal_voltage* in mmc core
+which can be used during mmc initialization to select the
+signal voltage. Platform driver should use the set_ios
+callback function to select the signal voltage.
+
+Signed-off-by: Kishon Vijay Abraham I <kishon@ti.com>
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+---
+ drivers/mmc/mmc.c | 16 ++++++++++++++++
+ include/mmc.h     |  8 ++++++++
+ 2 files changed, 24 insertions(+)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 588cfb2b2e..24b5e16a3b 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -30,6 +30,8 @@ static const unsigned int sd_au_size[] = {
+ 	SZ_16M / 512,	(SZ_16M + SZ_8M) / 512,	SZ_32M / 512,	SZ_64M / 512,
+ };
+ 
++static int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage);
++
+ #if CONFIG_IS_ENABLED(MMC_TINY)
+ static struct mmc mmc_static;
+ struct mmc *find_mmc_device(int dev_num)
+@@ -1257,6 +1259,12 @@ struct mode_width_tuning {
+ 	uint widths;
+ };
+ 
++static int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage)
++{
++	mmc->signal_voltage = signal_voltage;
++	return mmc_set_ios(mmc);
++}
++
+ static const struct mode_width_tuning sd_modes_by_pref[] = {
+ 	{
+ 		.mode = SD_HS,
+@@ -1964,6 +1972,14 @@ int mmc_start_init(struct mmc *mmc)
+ 		return err;
+ #endif
+ 	mmc->ddr_mode = 0;
++
++	/* First try to set 3.3V. If it fails set to 1.8V */
++	err = mmc_set_signal_voltage(mmc, MMC_SIGNAL_VOLTAGE_330);
++	if (err != 0)
++		err = mmc_set_signal_voltage(mmc, MMC_SIGNAL_VOLTAGE_180);
++	if (err != 0)
++		printf("failed to set signal voltage\n");
++
+ 	mmc_set_bus_width(mmc, 1);
+ 	mmc_set_clock(mmc, 1);
+ 
+diff --git a/include/mmc.h b/include/mmc.h
+index 3e57887af0..e5249637c8 100644
+--- a/include/mmc.h
++++ b/include/mmc.h
+@@ -272,6 +272,13 @@
+ #define ENHNCD_SUPPORT		(0x2)
+ #define PART_ENH_ATTRIB		(0x1f)
+ 
++enum mmc_voltage {
++	MMC_SIGNAL_VOLTAGE_000 = 0,
++	MMC_SIGNAL_VOLTAGE_120,
++	MMC_SIGNAL_VOLTAGE_180,
++	MMC_SIGNAL_VOLTAGE_330
++};
++
+ /* Maximum block size for MMC */
+ #define MMC_MAX_BLOCK_LEN	512
+ 
+@@ -457,6 +464,7 @@ struct mmc {
+ 	int high_capacity;
+ 	uint bus_width;
+ 	uint clock;
++	enum mmc_voltage signal_voltage;
+ 	uint card_caps;
+ 	uint ocr;
+ 	uint dsr;
+-- 
+2.15.1
+

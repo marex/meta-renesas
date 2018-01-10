@@ -1,0 +1,41 @@
+From fada9d883b23be5625eb15eb436a978e71b4885d Mon Sep 17 00:00:00 2001
+From: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Date: Thu, 30 Nov 2017 17:43:56 +0100
+Subject: [PATCH 38/56] mmc: Fixed a problem with old sd or mmc that do not
+ support High speed
+
+As the legacy modes were not added to the list of supported modes, old
+cards that do not support other modes could not be used.
+
+Signed-off-by: Jean-Jacques Hiblot <jjhiblot@ti.com>
+Reviewed-by: Lukasz Majewski <lukma@denx.de>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+---
+ drivers/mmc/mmc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 9b5c982578..c1f8851ab2 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -818,7 +818,7 @@ static int mmc_get_capabilities(struct mmc *mmc)
+ 	u8 *ext_csd = mmc->ext_csd;
+ 	char cardtype;
+ 
+-	mmc->card_caps = MMC_MODE_1BIT;
++	mmc->card_caps = MMC_MODE_1BIT | MMC_CAP(MMC_LEGACY);
+ 
+ 	if (mmc_host_is_spi(mmc))
+ 		return 0;
+@@ -1171,7 +1171,7 @@ static int sd_get_capabilities(struct mmc *mmc)
+ 	int timeout;
+ 	u32 sd3_bus_mode;
+ 
+-	mmc->card_caps = MMC_MODE_1BIT;
++	mmc->card_caps = MMC_MODE_1BIT | MMC_CAP(SD_LEGACY);
+ 
+ 	if (mmc_host_is_spi(mmc))
+ 		return 0;
+-- 
+2.15.1
+
