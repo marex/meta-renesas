@@ -1,0 +1,67 @@
+/dts-v1/;
+
+/ {
+	description = "Update fitImage for #{MACHINE}";
+
+	images {
+		bootparam {
+			description = "Bootparam SA0";
+			data = /incbin/("bootparam_sa0-#{MACHINE}.bin");
+			type = "standalone";
+			os = "Bootparams SA0";
+			arch = "arm64";
+			compression = "none";
+			load = <0x8000000>;
+		};
+
+		bl2 {
+			description = "BL2";
+			data = /incbin/("bl2-#{MACHINE}.bin");
+			type = "standalone";
+			os = "bl2";
+			arch = "arm64";
+			compression = "none";
+			load = <0x8040000>;
+		};
+
+		certheader {
+			description = "Cert Header SA6";
+			data = /incbin/("cert_header_sa6-#{MACHINE}.bin");
+			type = "standalone";
+			os = "Cert Header SA6";
+			arch = "arm64";
+			compression = "none";
+			load = <0x8180000>;
+		};
+
+		bl31 {
+			description = "BL31";
+			data = /incbin/("bl31-#{MACHINE}.bin");
+			type = "standalone";
+			os = "bl31";
+			arch = "arm64";
+			compression = "none";
+			load = <0x81c0000>;
+		};
+
+		tee {
+			description = "Tee";
+			data = /incbin/("tee-#{MACHINE}.bin");
+			type = "standalone";
+			os = "tee";
+			arch = "arm64";
+			compression = "none";
+			load = <0x8200000>;
+		};
+
+		uboot {
+			description = "U-Boot (64-bit)";
+			data = /incbin/("u-boot-#{MACHINE}.bin");
+			type = "standalone";
+			os = "U-Boot";
+			arch = "arm64";
+			compression = "none";
+			load = <0x8640000>;
+		};
+	};
+};
