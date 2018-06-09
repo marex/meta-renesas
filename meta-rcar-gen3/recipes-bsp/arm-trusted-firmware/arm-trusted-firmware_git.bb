@@ -17,11 +17,14 @@ SRC_URI = " \
 	file://warn.diff \
 	file://0001-plat-renesas-rcar-Disable-RPC-HF-access-security.patch \
 "
+
+SRC_URI_append_r8a77995 = " file://0001-plat-renesas-rcar-Add-D3-Draak-support.patch "
+
 SRCREV = "15dba6bb5868bdfad723bb727684b37b48643fec"
 
 PV = "v1.4+renesas+git${SRCPV}"
 
-COMPATIBLE_MACHINE = "(salvator-x|ulcb|ebisu)"
+COMPATIBLE_MACHINE = "(salvator-x|ulcb|draak|ebisu)"
 PLATFORM = "rcar"
 H3_IPL_OPTION = "${@get_ipl_config_opt(d)}"
 ATFW_OPT_LOSSY = "${@oe.utils.conditional("USE_MULTIMEDIA", "1", "RCAR_LOSSY_ENABLE=1", "", d)}"
@@ -29,6 +32,7 @@ ATFW_OPT_r8a7795 = "LSI=H3 RCAR_BL33_EXECUTION_EL=1 ${H3_IPL_OPTION} ${ATFW_OPT_
 ATFW_OPT_r8a7796 = "LSI=M3 RCAR_BL33_EXECUTION_EL=1 RCAR_DRAM_SPLIT=2 ${ATFW_OPT_LOSSY}"
 ATFW_OPT_r8a77965 = "LSI=M3N RCAR_BL33_EXECUTION_EL=1 ${ATFW_OPT_LOSSY}"
 ATFW_OPT_r8a77990 = "LSI=E3 RCAR_BL33_EXECUTION_EL=1 RCAR_SA0_SIZE=0 RCAR_AVS_SETTING_ENABLE=0"
+ATFW_OPT_r8a77995 = "LSI=D3 RCAR_BL33_EXECUTION_EL=1 RCAR_SA0_SIZE=0 RCAR_AVS_SETTING_ENABLE=0 SPD=none"
 ATFW_OPT_append_ulcb = " RCAR_GEN3_ULCB=1 PMIC_LEVEL_MODE=0"
 
 # requires CROSS_COMPILE set by hand as there is no configure script
